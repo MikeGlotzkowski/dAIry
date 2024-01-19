@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -11,6 +10,7 @@ function PictureSelectionPage() {
     const [error, setError] = useState(null);
     const [days, setDays] = useState([]);
     const [personas, setPersonas] = useState([]);
+    const [availablePersonas, setAvailablePersonas] = useState([]);
 
     useEffect(() => {
         const fetchDays = async () => {
@@ -22,38 +22,42 @@ function PictureSelectionPage() {
             }
         };
 
-        fetchDays();
-    }, []);
-
-    useEffect(() => {
         const fetchPersonas = async () => {
             try {
                 const response = await axios.get('http://localhost:5000/api/get/personas');
                 setPersonas(response.data);
+                setAvailablePersonas(response.data);
             } catch (error) {
                 console.error('Error fetching personas:', error);
             }
         };
 
+        fetchDays();
         fetchPersonas();
     }, []);
 
     const handleDayChange = (day) => {
-        console.log(days);
+        setSelectedDay(days.find((d) => d.id === day));
     };
 
-    const handlePersonaChange = (e) => {
-        const selectedOptions = Array.from(e.target.selectedOptions);
+    const handlePersonaChange = (selectedPersonaIds) => {
+        console.log(selectedPersonaIds);
+        const selectedPersonas = personas.filter((persona) => selectedPersonaIds.includes(persona.id.toString()));
+        setSelectedPersonas(selectedPersonas);
+    };
 
-        console.log(personas);
-        const selectedPersonas = selectedOptions.map((option) =>
-            personas.find((persona) => persona.id === option.value)
-        );
-        // TODO
-        // setSelectedPersonas(selectedPersonas);
+    const handleAddPersona = (persona) => {
+        setAvailablePersonas((prev) => prev.filter((p) => p.id !== persona.id));
+        setSelectedPersonas((prev) => [...prev, persona]);
+    };
+
+    const handleRemovePersona = (persona) => {
+        setSelectedPersonas((prev) => prev.filter((p) => p.id !== persona.id));
+        setAvailablePersonas((prev) => [...prev, persona]);
     };
 
     const handleSubmit = async () => {
+
         setIsLoading(true);
         setError(null);
 
@@ -114,19 +118,41 @@ function PictureSelectionPage() {
                     </option>
                 ))}
             </select>
-            {/* Persona selection dropdown (multi-select) */}
-            <select
-                multiple
-                value={selectedPersonas.map((persona) => persona.id)}
-                onChange={handlePersonaChange}
-            >
-                <option value="">Select Personas</option>
-                {personas.map((persona) => (
-                    <option key={persona.id} value={persona.id}>
-                        {persona.name}
-                    </option>
-                ))}
-            </select>
+
+            {/* Available Personas */}
+            <div>
+                <h3>Personas to select</h3>
+                <select
+                    multiple
+                    value={availablePersonas.map((persona) => persona.id)}
+                    onChange={(e) => handlePersonaChange(Array.from(e.target.selectedOptions).map((option) => option.value))}
+                >
+                    {availablePersonas.map((persona) => (
+                        <option key={persona.id} value={persona.id}>
+                            {persona.name}
+                        </option>
+                    ))}
+                </select>
+                <button onClick={() => handleAddPersona(selectedPersonas[0])}>Add Persona</button>
+            </div>
+
+            {/* Selected Personas */}
+            <div>
+                <h3>Selected Personas</h3>
+                <select
+                    multiple
+                    value={selectedPersonas.map((persona) => persona.id)}
+                    onChange={(e) => handlePersonaChange(Array.from(e.target.selectedOptions).map((option) => option.value))}
+                >
+                    {selectedPersonas.map((persona) => (
+                        <option key={persona.id} value={persona.id}>
+                            {persona.name}
+                        </option>
+                    ))}
+                </select>
+                <button onClick={() => handleRemovePersona(availablePersonas[0])}>Remove Persona</button>
+            </div>
+
             <button onClick={handleSubmit} disabled={isLoading}>
                 {isLoading ? 'Generating Pictures...' : 'Submit'}
             </button>
@@ -152,3 +178,4 @@ function PictureSelectionPage() {
 }
 
 export default PictureSelectionPage;
+
